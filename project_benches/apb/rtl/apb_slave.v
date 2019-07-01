@@ -7,8 +7,8 @@ module APB_SLAVE(PRESET,PCLK,PSEL,PENABLE,PREADY,PADDR,PWRITE,PWDATA,PRDATA);
 	parameter DATA_WIDTH;
 	parameter [1:0]
 		IDLE    = 2'b00;
-		SETUP   = 2'b01;
-		ACCESS  = 2'b10;
+		WRITE   = 2'b01;
+		READ    = 2'b10;
 		ILLEGAL = 2'b11;
 
 	//-------------------------- Input signals ------------------------//
@@ -47,19 +47,23 @@ module APB_SLAVE(PRESET,PCLK,PSEL,PENABLE,PREADY,PADDR,PWRITE,PWDATA,PRDATA);
 	PRDATA = 0, PREADY = 0;
 	case (current_state)
 		IDLE: begin
-			if(PSEL) next_state = SETUP;
-			else next_state = IDLE;
+			if(PSEL && PENABLE) begin
+				if(PWRITE)
+					next_state = WRITE;
+				else if (!WRITE)
+					next_state = READ;
+			end
 		end
 		
-		SETUP: begin
-			if(PSEL && PENABLE) next_state = ACCESS;
-		end
-		
-		ACCESS: begin
+		WRITE: begin
 			if (PSEL && PENABLE && PWRITE) begin
 				PREADY = 1;
 				RAM[PADDR] = PWDATA;
 			end
+			next_state = IDLE;
+		end
+		
+		READ: begin
 			else if (PSEL && PENABLE && !PWRITE) begin
 				PREADY = 1;
 				PRDATA = RAM[PADDR];			
